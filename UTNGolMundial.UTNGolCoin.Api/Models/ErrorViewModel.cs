@@ -1,4 +1,4 @@
-namespace UTNGolMundial.UTNGolCoin.Api.Models
+﻿namespace UTNGolMundial.UTNGolCoin.Api.Models
 {
     public class ErrorViewModel
     {

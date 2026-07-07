@@ -6,10 +6,21 @@ namespace UTNGolMundial.UTNGolCoin.Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            //Servivios MVC/API y Swagger
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+
             // Add services to the container.
             builder.Services.AddControllersWithViews();
 
             var app = builder.Build();
+
+            //Manejo de errores en producción y desarrollo
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
 
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
@@ -25,11 +36,16 @@ namespace UTNGolMundial.UTNGolCoin.Api
             app.UseAuthorization();
 
             app.MapStaticAssets();
+
+            //Rutas para API controllers
+            app.MapControllers();
+
             app.MapControllerRoute(
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}")
                 .WithStaticAssets();
 
+            
             app.Run();
         }
     }
