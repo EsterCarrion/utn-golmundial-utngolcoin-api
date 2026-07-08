@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using UTNGolMundial.UTNGolCoin.Api.Data;
+
 namespace UTNGolMundial.UTNGolCoin.Api
 {
     public class Program
@@ -6,7 +9,18 @@ namespace UTNGolMundial.UTNGolCoin.Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            //Servivios MVC/API y Swagger
+            // Cadena de conexión MariaDB/MySQL
+            var connectionString = builder.Configuration.GetConnectionString("GolCoinConnection")
+            ?? throw new InvalidOperationException("No se encontró la cadena de conexión 'GolCoinConnection'.");
+
+            builder.Services.AddDbContext<GolCoinDbContext>(options =>
+                options.UseMySql(
+                    connectionString,
+                    ServerVersion.AutoDetect(connectionString)
+                )
+            );
+
+            //Swagger
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
@@ -15,13 +29,14 @@ namespace UTNGolMundial.UTNGolCoin.Api
 
             var app = builder.Build();
 
-            //Manejo de errores en producción y desarrollo
+            //Swagger solo en desarrollo
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
 
+            //Manejo de errores en producción
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
             {
@@ -37,9 +52,10 @@ namespace UTNGolMundial.UTNGolCoin.Api
 
             app.MapStaticAssets();
 
-            //Rutas para API controllers
+            //Rutas  API
             app.MapControllers();
 
+            //Ruta MVC
             app.MapControllerRoute(
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}")
