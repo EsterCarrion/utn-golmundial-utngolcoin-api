@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using UTNGolMundial.UTNGolCoin.Api.Data;
+using UTNGolMundial.UTNGolCoin.Api.Services;
 
 namespace UTNGolMundial.UTNGolCoin.Api
 {
@@ -19,6 +20,10 @@ namespace UTNGolMundial.UTNGolCoin.Api
                     ServerVersion.AutoDetect(connectionString)
                 )
             );
+
+            // Servicios de negocio
+            builder.Services.AddScoped<TransaccionService>();
+            builder.Services.AddScoped<BilleteraService>();
 
             //Swagger
             builder.Services.AddEndpointsApiExplorer();
