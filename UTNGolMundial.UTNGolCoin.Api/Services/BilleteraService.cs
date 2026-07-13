@@ -152,5 +152,10 @@ namespace UTNGolMundial.UTNGolCoin.Api.Services
 
             return billetera != null && billetera.Saldo >= monto;
         }
+        public async Task<Billetera?> ObtenerBilleteraPorUsuarioAsync(int usuarioId)
+        {
+            return await _context.Billeteras
+                .FirstOrDefaultAsync(b => b.UsuarioId == usuarioId);
+        }
     }
 }
