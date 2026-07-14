@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using UTNGolMundial.UTNGolCoin.Api.Data;
 using UTNGolMundial.UTNGolCoin.Api.Services;
- 
 
 namespace UTNGolMundial.UTNGolCoin.Api
 {
@@ -13,8 +15,9 @@ namespace UTNGolMundial.UTNGolCoin.Api
 
             // Cadena de conexión MariaDB/MySQL
             var connectionString = builder.Configuration.GetConnectionString("GolCoinConnection")
-            ?? throw new InvalidOperationException("No se encontró la cadena de conexión 'GolCoinConnection'.");
+                ?? throw new InvalidOperationException("No se encontró la cadena de conexión 'GolCoinConnection'.");
 
+            // DbContext
             builder.Services.AddDbContext<GolCoinDbContext>(options =>
                 options.UseMySql(
                     connectionString,
@@ -29,48 +32,35 @@ namespace UTNGolMundial.UTNGolCoin.Api
             builder.Services.AddScoped<LiquidacionService>();
             builder.Services.AddScoped<BonoDiarioService>();
 
-            //Swagger
+            // Controllers API
+            builder.Services.AddControllers();
+
+            // Swagger
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
-            // Add services to the container.
-            builder.Services.AddControllersWithViews();
-
             var app = builder.Build();
 
-            //Swagger solo en desarrollo
+            // Swagger solo en desarrollo
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
 
-            //Manejo de errores en producción
-            // Configure the HTTP request pipeline.
+            // Configuración para producción
             if (!app.Environment.IsDevelopment())
             {
-                app.UseExceptionHandler("/Home/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
 
             app.UseHttpsRedirection();
-            app.UseRouting();
 
             app.UseAuthorization();
 
-            app.MapStaticAssets();
-
-            //Rutas  API
+            // Rutas API
             app.MapControllers();
 
-            //Ruta MVC
-            app.MapControllerRoute(
-                name: "default",
-                pattern: "{controller=Home}/{action=Index}/{id?}")
-                .WithStaticAssets();
-
-            
             app.Run();
         }
     }
