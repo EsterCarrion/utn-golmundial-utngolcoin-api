@@ -1,0 +1,121 @@
+﻿using Microsoft.EntityFrameworkCore;
+using UTNGolMundial.UTNGolCoin.Api.Config;
+using UTNGolMundial.UTNGolCoin.Api.Data;
+using UTNGolMundial.UTNGolCoin.Api.Models;
+
+namespace UTNGolMundial.UTNGolCoin.Api.Services
+{
+    public class BonoDiarioService
+    {
+        private readonly GolCoinDbContext _context;
+        private readonly TransaccionService _transaccionService;
+
+        public BonoDiarioService(
+            GolCoinDbContext context,
+            TransaccionService transaccionService)
+        {
+            _context = context;
+            _transaccionService = transaccionService;
+        }
+
+        public async Task<object> OtorgarBonoDiarioAsync(int usuarioId)
+        {
+            if (usuarioId <= 0)
+            {
+                throw new ArgumentException("El usuarioId debe ser mayor a 0.");
+            }
+
+            var billetera = await _context.Billeteras
+                .FirstOrDefaultAsync(b => b.UsuarioId == usuarioId);
+
+            if (billetera == null)
+            {
+                throw new InvalidOperationException("El usuario no tiene billetera registrada.");
+            }
+
+            if (!billetera.Activa)
+            {
+                throw new InvalidOperationException("La billetera del usuario no está activa.");
+            }
+
+            // El bono diario solo aplica cuando el saldo es exactamente 0.
+            if (billetera.Saldo != 0)
+            {
+                return new
+                {
+                    mensaje = "El usuario no aplica al bono diario porque su saldo no es 0.",
+                    usuarioId,
+                    saldoActual = billetera.Saldo,
+                    bonoOtorgado = false
+                };
+            }
+
+            var fechaHoy = DateTime.UtcNow.Date;
+
+            var yaRecibioBonoHoy = await _context.BonosDiarios
+                .AnyAsync(b => b.UsuarioId == usuarioId && b.FechaBono == fechaHoy);
+
+            if (yaRecibioBonoHoy)
+            {
+                return new
+                {
+                    mensaje = "El usuario ya recibió el bono diario el día de hoy.",
+                    usuarioId,
+                    fechaBono = fechaHoy,
+                    bonoOtorgado = false
+                };
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var montoBono = GolCoinConfig.BonoDiarioSaldoCero;
+
+                billetera.Saldo += montoBono;
+                billetera.FechaActualizacion = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                var transaccion = await _transaccionService.RegistrarTransaccionAsync(
+                    billetera.Id,
+                    usuarioId,
+                    GolCoinConfig.TipoBonoDiario,
+                    montoBono,
+                    billetera.Saldo,
+                    "Bono diario otorgado por saldo cero"
+                );
+
+                var bonoDiario = new BonoDiario
+                {
+                    UsuarioId = usuarioId,
+                    FechaBono = fechaHoy,
+                    Monto = montoBono,
+                    TransaccionId = transaccion.Id,
+                    FechaRegistro = DateTime.UtcNow
+                };
+
+                _context.BonosDiarios.Add(bonoDiario);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                return new
+                {
+                    mensaje = "Bono diario otorgado correctamente.",
+                    usuarioId,
+                    montoBono,
+                    saldoActual = billetera.Saldo,
+                    fechaBono = fechaHoy,
+                    transaccionId = transaccion.Id,
+                    bonoOtorgado = true
+                };
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+    }
+}

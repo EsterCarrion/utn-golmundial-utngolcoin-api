@@ -27,6 +27,7 @@ namespace UTNGolMundial.UTNGolCoin.Api
             builder.Services.AddScoped<BilleteraService>();
             builder.Services.AddScoped<PrediccionService>();
             builder.Services.AddScoped<LiquidacionService>();
+            builder.Services.AddScoped<BonoDiarioService>();
 
             //Swagger
             builder.Services.AddEndpointsApiExplorer();
