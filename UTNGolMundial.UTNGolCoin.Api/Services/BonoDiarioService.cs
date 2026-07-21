@@ -18,6 +18,41 @@ namespace UTNGolMundial.UTNGolCoin.Api.Services
             _transaccionService = transaccionService;
         }
 
+
+        //Método para otorgar un bono masivo a todos los usuarios con saldo cero
+        public async Task<int> OtorgarBonoMasivoAdminAsync()
+        {
+            const decimal montoBono = 1m;
+
+            var billeterasSinSaldo = await _context.Billeteras
+                .Where(b => b.Saldo == 0)
+                .ToListAsync();
+
+            foreach (var billetera in billeterasSinSaldo)
+            {
+                billetera.Saldo += montoBono;
+
+                var transaccion = new Transaccion
+                {
+                    UsuarioId = billetera.UsuarioId,
+                    BilleteraId = billetera.Id,
+                    Tipo = "BONO_ADMIN",
+                    Monto = montoBono,
+                    SaldoResultante = billetera.Saldo,
+                    Descripcion = "Bono de una moneda otorgado por el administrador",
+                    Fecha = DateTime.UtcNow
+                };
+
+                _context.Transacciones.Add(transaccion);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return billeterasSinSaldo.Count;
+        }
+
+
+
         public async Task<object> OtorgarBonoDiarioAsync(int usuarioId)
         {
             if (usuarioId <= 0)

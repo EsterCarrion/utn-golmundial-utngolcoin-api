@@ -49,5 +49,20 @@ namespace UTNGolMundial.UTNGolCoin.Api.Controllers
                 });
             }
         }
+        // POST: api/bonos-diarios/admin/masivo
+        [HttpPost("admin/masivo")]
+        public async Task<IActionResult> OtorgarBonoMasivoAdmin()
+        {
+            var usuariosBeneficiados =
+                await _bonoDiarioService.OtorgarBonoMasivoAdminAsync();
+
+            return Ok(new
+            {
+                mensaje = usuariosBeneficiados > 0
+                    ? "El bono fue otorgado correctamente."
+                    : "No existen usuarios con saldo en cero.",
+                usuariosBeneficiados
+            });
+        }
     }
 }

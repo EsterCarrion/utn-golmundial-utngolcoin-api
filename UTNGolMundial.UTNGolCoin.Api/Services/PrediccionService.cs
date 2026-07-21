@@ -10,18 +10,45 @@ namespace UTNGolMundial.UTNGolCoin.Api.Services
     {
         private readonly GolCoinDbContext _context;
         private readonly BilleteraService _billeteraService;
+        private readonly EstadisticasApiService _estadisticasApiService;
 
         public PrediccionService(
             GolCoinDbContext context,
-            BilleteraService billeteraService)
+            BilleteraService billeteraService,
+            EstadisticasApiService estadisticasApiService)
         {
             _context = context;
             _billeteraService = billeteraService;
+            _estadisticasApiService = estadisticasApiService;
         }
 
         public async Task<PrediccionResponseDto> CrearPrediccionAsync(CrearPrediccionDto dto)
         {
-            var resultado = dto.ResultadoPronosticado.Trim().ToUpper();
+            if (dto == null)
+            {
+                throw new ArgumentNullException(nameof(dto));
+            }
+
+            if (dto.UsuarioId <= 0)
+            {
+                throw new ArgumentException(
+                    "El identificador del usuario debe ser mayor a cero."
+                );
+            }
+            if (dto.PartidoId <= 0)
+            {
+                throw new ArgumentException(
+                    "El identificador del partido debe ser mayor a cero."
+                );
+            }
+            if (string.IsNullOrWhiteSpace(dto.ResultadoPronosticado))
+            {
+                throw new ArgumentException(
+                    "El resultado pronosticado es obligatorio."
+                );
+            }
+
+            var resultado = dto.ResultadoPronosticado.Trim().ToUpperInvariant();
 
             // Validar resultado permitido en predicción 1X2.
             if (!EsResultadoValido(resultado))
@@ -33,6 +60,37 @@ namespace UTNGolMundial.UTNGolCoin.Api.Services
             if (dto.MontoApostado <= 0)
             {
                 throw new ArgumentException("El monto apostado debe ser mayor a cero.");
+            }
+
+            // Consultar el partido en la API de Estadísticas.
+            var partido = await _estadisticasApiService
+                .ObtenerPartidoPorIdAsync(dto.PartidoId);
+
+            // Validar que el partido exista.
+            if (partido == null)
+            {
+                throw new InvalidOperationException(
+                    "El partido indicado no existe en el Servicio de Estadísticas."
+                );
+            }
+
+            var estadoPartido = partido.Estado?
+                .Trim()
+                .ToUpperInvariant();
+
+            if (estadoPartido == "FINALIZADO")
+            {
+                throw new InvalidOperationException(
+                    "No se puede realizar una predicción porque el partido ya está finalizado."
+                );
+            }
+
+            // Validar que todavía no haya llegado la fecha y hora de inicio.
+            if (DateTimeOffset.UtcNow >= partido.FechaHoraUtc.ToUniversalTime())
+            {
+                throw new InvalidOperationException(
+                    "Las predicciones están cerradas porque el partido ya inició."
+                );
             }
 
             // Validar que el usuario tenga billetera en GolCoin.
@@ -63,13 +121,6 @@ namespace UTNGolMundial.UTNGolCoin.Api.Services
                 throw new InvalidOperationException("El usuario ya realizó una predicción para este partido.");
             }
 
-            /*
-             * Importante:
-             * Todavía no se valida la fecha/hora de cierre del partido,
-             * porque esa información pertenece al backend de estadísticas.
-             * Más adelante se consultará esa API para validar que el partido
-             * aún esté abierto para predicciones.
-             */
 
             var cuota = ObtenerCuotaPorResultado(resultado);
 

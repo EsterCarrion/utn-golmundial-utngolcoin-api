@@ -32,6 +32,25 @@ namespace UTNGolMundial.UTNGolCoin.Api
             builder.Services.AddScoped<LiquidacionService>();
             builder.Services.AddScoped<BonoDiarioService>();
 
+            var estadisticasBaseUrl =
+               builder.Configuration["ServiciosExternos:EstadisticasBaseUrl"]
+               ?? throw new InvalidOperationException(
+                   "No se configuró ServiciosExternos:EstadisticasBaseUrl en appsettings.json."
+               );
+
+            builder.Services.AddHttpClient<EstadisticasApiService>(client =>
+            {
+                client.BaseAddress = new Uri(estadisticasBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(10);
+
+                client.DefaultRequestHeaders.Accept.Clear();
+                client.DefaultRequestHeaders.Accept.Add(
+                    new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue(
+                        "application/json"
+                    )
+                );
+            });
+
             // Controllers API
             builder.Services.AddControllers();
 
@@ -54,7 +73,7 @@ namespace UTNGolMundial.UTNGolCoin.Api
                 app.UseHsts();
             }
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
 
             app.UseAuthorization();
 
